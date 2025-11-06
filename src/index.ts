@@ -26,6 +26,7 @@ const SAMPLE_DATA = [
   { lat: 45.38, lon: -120.35, geology: 0.48, geochem: 0.52, remote: 0.45, name: "Site L" },
 ];
 
+// Environment interface - currently no environment variables or bindings are required
 interface Env {}
 
 export default {
