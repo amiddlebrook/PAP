@@ -1,0 +1,6 @@
+name = "pap"
+main = "src/index.ts"
+compatibility_date = "2023-10-25"
+
+[env.production]
+name = "pap"
