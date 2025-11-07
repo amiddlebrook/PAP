@@ -6,11 +6,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "eslint src --ext .ts,.tsx",
-    "worker:install": "npm install --prefix worker",
-    "worker:dev": "npm run dev --prefix worker",
-    "worker:deploy": "npm run deploy --prefix worker",
-    "worker:typecheck": "npm run typecheck --prefix worker"
+    "lint": "eslint src --ext .ts,.tsx"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.45.1",
