@@ -1,0 +1,11 @@
+# Copy this file to wrangler.local.toml to add bindings for local development.
+# These bindings are optional and are not required for CI builds that use the mock worker.
+
+[[d1_databases]]
+binding = "PAP_DB"
+database_name = "pap-d1"
+database_id = "00000000-0000-0000-0000-000000000000"
+
+[[r2_buckets]]
+binding = "PAP_STORAGE"
+bucket_name = "pap-geo-assets"
