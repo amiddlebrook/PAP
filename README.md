@@ -1,68 +1,108 @@
 # Prospecting Analytics Platform (PAP)
 
-Prospecting Analytics Platform (PAP) is a Cloudflare-native web application that analyzes global
-datasets to surface high-value mineral exploration targets. The product requirements document in
-this repository is now accompanied by a working prototype that includes the core frontend layout,
-state management, a mock scoring engine, and a Cloudflare Worker skeleton.
+## Product Overview
+The Prospecting Analytics Platform (PAP) is a Cloudflare-native web application for analyzing global geological, geochemical, and remote-sensing datasets to identify precious-metal prospecting opportunities. It provides an interactive heatmap experience where users can tune weights, apply filters, and extract high-value targets.
 
-## Monorepo layout
+Core capabilities include the ability to select any geographic region, load multiple geological and remote-sensing layers, adjust weights to generate live Prospect Score heatmaps, select areas using drawing tools, export leads, and save or share sessions through unique URLs. The system emphasizes low operating cost and high performance by leveraging Cloudflare Pages and Workers, R2 for storage, and PMTiles/COGs for map layers.
+
+## User Personas
+- **Independent Prospectors**: seek easy presets, rapid insights, and quick exports (GPX, KML, GeoJSON).
+- **Exploration Startups**: need ranked leads, structured data, and team collaboration features.
+- **Data Researchers**: require raw values, transparency, and complete control for their own modeling.
+
+## Core Features (MVP)
+### Global Map Interface
+- Built with MapLibre GL for rendering.
+- Smooth pan and zoom with multiple basemaps.
+
+### Layer Browser
+- Toggle geology polygons, faults, known deposits, geochemical grids, satellite indices, and DEM derivatives.
+
+### Prospect Score Engine
+Uses a weighted sum model:
 
 ```
-.
-├── index.html              # Vite entry document
-├── package.json            # Frontend dependencies and scripts
-├── public/                 # Static assets (favicon)
-├── src/                    # React application source
-│   ├── components/         # UI primitives (map, panels, leads list, presets, etc.)
-│   ├── state/              # Zustand project store with persistence and lead refresh logic
-│   ├── types/              # Shared type definitions for layers, weights, presets, and leads
-│   └── utils/              # Prospect score mock computation utilities
-└── worker/                 # Cloudflare Worker API scaffold
-    ├── package.json
-    ├── src/index.ts        # REST endpoints for health check and lead generation
-    └── wrangler.toml
+score = Σ(weight_i × normalized_feature_i)
 ```
 
-## Getting started
+Supported features include deposit proximity, fault density, lithology match, geochemical anomaly values, ferric iron index, clay index, Al-OH alteration index, and slope/exposure scores.
 
-### Frontend (Vite + React + MapLibre)
+### Selection Tools
+- Lasso, rectangle, and point selection.
+- Statistical summaries and export of selections.
 
-```bash
-# Install dependencies
-npm install
+### Leads Generator
+- Extracts top-scoring tiles, clusters them, and generates lead zones with metadata.
 
-# Start the development server
-npm run dev
-```
+### Save & Share
+- Stores data in Durable Objects and shares via encoded URLs.
 
-The UI opens automatically on http://localhost:5173 with the following capabilities:
+## Advanced Features (Post-MVP)
+Future enhancements include ML-assisted alteration mapping, satellite time-series analysis, offline PMTiles packs, user-uploaded assay data, and AI-guided prospecting queries.
 
-- **Global map** rendered by MapLibre with toggleable geological data layers and mock PMTiles/COG
-  sources.
-- **Layer browser** that reflects the PRD dataset catalog and toggles visibility instantly.
-- **Weight sliders** tied to the weighted-sum prospect score model. Adjusting sliders immediately
-  recalculates leads via the mock scoring engine.
-- **Commodity presets** for Orogenic Gold, Porphyry Copper, and Pegmatite Lithium that load tailored
-  weight configurations.
-- **Leads panel** listing the highest-scoring targets (mock data derived from sample tiles).
-- **Save & Share** control that simulates Durable Object-backed sharing by generating an encoded URL.
-- **Selection toolbar** with placeholder lasso/box/point controls and export trigger.
-- **Heatmap legend** that conveys the scoring range.
+## Technical Architecture
+- **Frontend**: React, MapLibre, deck.gl, Zustand, TanStack Query.
+- **Backend**: Cloudflare Workers and Durable Objects.
+- **Storage**: Cloudflare R2 for PMTiles/COGs and D1 (SQLite).
 
-### Cloudflare Worker API
+### R2 Storage Structure
+- `geo/geology.pmtiles`
+- `geo/faults.pmtiles`
+- `geo/deposits.pmtiles`
+- `geo/indices/*.tif`
+- `geo/dem/*.tif`
 
-```bash
-cd worker
-npm install
-npm run dev
-```
+### D1 Database Tables
+- `projects(id, owner, name, state_json, created_at)`
+- `leads(id, project_id, geom, score, factors_json)`
+- `sources(id, type, url, version, metadata_json)`
 
-The worker exposes two endpoints:
+## Scoring Engine Details
+Each tile or hex cell stores normalized features:
+`deposit_proximity`, `fault_density`, `lithology_match`, `geochem_score`, `ferric_index`, `clay_index`, `aloh_index`, and `slope_score`.
 
-- `GET /api/health` — lightweight status check.
-- `POST /api/leads` — mock lead generator that accepts weights + layers and returns synthesized lead
-  clusters. This endpoint is ready to be connected to the frontend state store once the real scoring
-  engine is implemented.
+Normalization strategies:
+- Min-max scaling per region.
+- Z-score normalization for geochemical data.
+- Capped values for distance-based metrics.
 
-Both the frontend and worker adhere to the architecture, performance, and data model conventions
-captured in the original PAP PRD, enabling the team to iterate toward production features.
+## Preset Models
+- **Gold (Orogenic)**: high structure density, medium-high ferric iron, lithology match for greenstones, Au/As/Sb anomalies.
+- **Copper (Porphyry)**: high ferric and clay indices, intrusive lithology, faults within 5 km.
+- **Lithium (Pegmatite)**: fractionated granites, radiometric potassium proxies, low vegetation index, moderate slopes.
+
+## User Stories
+- **US-001**: Generate Heatmap.
+- **US-002**: Select Area.
+- **US-003**: Generate Leads.
+- **US-004**: Save & Share Projects.
+- **US-005**: Export Data.
+
+## UI Specification
+- Left panel for layer management.
+- Right panel for weight sliders.
+- Top-left controls for Save/Share.
+- Top-right presets menu.
+- Bottom heatmap legend.
+
+### Leads Panel
+Displays lead name, score, centroid, bounding box, sorting options, and zoom-to buttons.
+
+## Performance Requirements
+- Heatmap updates in under 500 ms.
+- Tile load times under 200 ms.
+- Worker compute time under 50 ms.
+- Storage cost under $5 per month.
+- Worker cost under $7 per month under medium usage.
+
+## Security Requirements
+- Optional Cloudflare Access OAuth.
+- Enforced HTTPS.
+- Signed tile URLs.
+- No user file uploads in the MVP.
+
+## Future Roadmap
+- **Q2**: ML classifiers and custom formulas.
+- **Q3**: Offline mode, AI agent, and team workspaces.
+- **Q4**: Automated PDF reports, drillhole ingestion, and predictive modeling.
+
