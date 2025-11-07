@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { MapView } from './components/MapView';
 import { LayersPanel } from './components/LayersPanel';
 import { WeightsPanel } from './components/WeightsPanel';
@@ -9,12 +8,7 @@ import { SaveSharePanel } from './components/SaveSharePanel';
 import { useProjectStore } from './state/projectStore';
 
 function App() {
-  const activePreset = useProjectStore((state) => state.activePreset);
-  const refreshLeads = useProjectStore((state) => state.refreshLeads);
-
-  useEffect(() => {
-    void refreshLeads();
-  }, [refreshLeads]);
+  const { activePreset } = useProjectStore();
 
   return (
     <div className="app-shell">

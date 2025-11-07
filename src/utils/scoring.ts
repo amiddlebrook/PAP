@@ -65,7 +65,7 @@ const factorLabels: Record<WeightKey, string> = {
   slope_score: 'Slope/exposure'
 };
 
-export function computeFallbackLeads(weights: Record<WeightKey, number>): Lead[] {
+export function computeProspectScore(weights: Record<WeightKey, number>): Lead[] {
   const maxWeight = Math.max(...Object.values(weights));
 
   return sampleTiles

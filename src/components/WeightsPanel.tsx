@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { useProjectStore } from '../state/projectStore';
 import { weightCatalog } from '../types/weights';
 
@@ -9,15 +9,9 @@ export function WeightsPanel() {
     refreshLeads: state.refreshLeads
   }));
 
-  const debounceHandle = useRef<number | undefined>();
-
   useEffect(() => {
-    return () => {
-      if (debounceHandle.current) {
-        window.clearTimeout(debounceHandle.current);
-      }
-    };
-  }, []);
+    refreshLeads();
+  }, [refreshLeads]);
 
   return (
     <aside className="panel weights-panel">
@@ -37,31 +31,7 @@ export function WeightsPanel() {
             max={weight.max}
             step={0.1}
             value={weights[weight.id]}
-            onChange={(event) => {
-              updateWeight(weight.id, Number(event.target.value));
-              if (debounceHandle.current) {
-                window.clearTimeout(debounceHandle.current);
-              }
-              debounceHandle.current = window.setTimeout(() => {
-                void refreshLeads();
-              }, 250);
-            }}
-            onMouseUp={() => {
-              if (debounceHandle.current) {
-                window.clearTimeout(debounceHandle.current);
-              }
-              debounceHandle.current = window.setTimeout(() => {
-                void refreshLeads();
-              }, 10);
-            }}
-            onTouchEnd={() => {
-              if (debounceHandle.current) {
-                window.clearTimeout(debounceHandle.current);
-              }
-              debounceHandle.current = window.setTimeout(() => {
-                void refreshLeads();
-              }, 10);
-            }}
+            onChange={(event) => updateWeight(weight.id, Number(event.target.value))}
           />
           <small>{weight.description}</small>
         </div>

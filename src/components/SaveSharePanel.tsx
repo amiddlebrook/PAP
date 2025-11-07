@@ -1,27 +1,12 @@
-import { useMemo, useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useProjectStore } from '../state/projectStore';
-import { API_BASE_URL } from '../config';
 
-async function requestShareUrl(projectState: unknown): Promise<string> {
-  const endpoint = API_BASE_URL ? `${API_BASE_URL}/api/share` : '/api/share';
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ state: projectState })
-  });
-
-  if (!response.ok) {
-    const message = await response.text();
-    throw new Error(message || 'Failed to create share link');
-  }
-
-  const payload = (await response.json()) as { sharePath?: string };
-  if (!payload.sharePath) {
-    throw new Error('Share endpoint returned an invalid payload');
-  }
-
-  return `${window.location.origin}${payload.sharePath}`;
+async function fetchShareUrl(projectState: unknown): Promise<string> {
+  // Placeholder API call to Cloudflare Worker endpoint
+  await new Promise((resolve) => setTimeout(resolve, 400));
+  const encodedState = encodeURIComponent(JSON.stringify(projectState));
+  return `${window.location.origin}/share?state=${encodedState}`;
 }
 
 export function SaveSharePanel() {
@@ -37,16 +22,10 @@ export function SaveSharePanel() {
 
   const [isDialogOpen, setDialogOpen] = useState(false);
 
-  const activeLayerIds = useMemo(
-    () =>
-      Object.entries(activeLayers)
-        .filter(([, enabled]) => enabled)
-        .map(([layerId]) => layerId),
-    [activeLayers]
-  );
-
-  const shareMutation = useMutation({
-    mutationFn: () => requestShareUrl({ projectName, weights, layers: activeLayerIds })
+  const { data: shareUrl, refetch, isFetching } = useQuery({
+    queryKey: ['share-url', weights, activeLayers],
+    queryFn: () => fetchShareUrl({ projectName, weights, activeLayers }),
+    enabled: false
   });
 
   return (
@@ -65,46 +44,30 @@ export function SaveSharePanel() {
         onClick={async () => {
           setSharing(true);
           setDialogOpen(true);
-          try {
-            await shareMutation.mutateAsync();
-          } catch (error) {
-            console.error('Failed to generate share link', error);
-          } finally {
-            setSharing(false);
-          }
+          await refetch();
+          setSharing(false);
         }}
-        disabled={shareMutation.isPending || isSharing}
+        disabled={isFetching || isSharing}
       >
-        {shareMutation.isPending || isSharing ? 'Generating…' : 'Save & Share'}
+        {isFetching || isSharing ? 'Generating…' : 'Save & Share'}
       </button>
-      {isDialogOpen && (
+      {isDialogOpen && shareUrl && (
         <div
           className="panel"
           style={{ position: 'absolute', top: '72px', left: '16px', maxWidth: '320px', zIndex: 10 }}
         >
           <strong>Shareable link</strong>
-          {shareMutation.data ? (
-            <code
-              style={{
-                background: '#0f172a',
-                color: 'white',
-                padding: '8px',
-                borderRadius: '6px',
-                wordBreak: 'break-all'
-              }}
-            >
-              {shareMutation.data}
-            </code>
-          ) : (
-            <p style={{ color: '#475569', fontSize: '0.85rem' }}>
-              {shareMutation.isPending ? 'Preparing link…' : 'No link generated yet.'}
-            </p>
-          )}
-          {shareMutation.isError && (
-            <p style={{ color: '#dc2626', fontSize: '0.8rem' }}>
-              {(shareMutation.error as Error).message}
-            </p>
-          )}
+          <code
+            style={{
+              background: '#0f172a',
+              color: 'white',
+              padding: '8px',
+              borderRadius: '6px',
+              wordBreak: 'break-all'
+            }}
+          >
+            {shareUrl}
+          </code>
           <button className="secondary" onClick={() => setDialogOpen(false)}>
             Close
           </button>
