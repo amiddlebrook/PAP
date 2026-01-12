@@ -12,6 +12,12 @@ type LeadResponse = {
   dominantFactors: string[];
 };
 
+type Env = {
+  ASSETS: {
+    fetch: (request: Request) => Promise<Response>;
+  };
+};
+
 function jsonResponse<T>(payload: T, init?: ResponseInit) {
   return new Response(JSON.stringify(payload), {
     headers: { 'content-type': 'application/json' },
@@ -36,7 +42,7 @@ function computeLeads(request: ProspectRequest): LeadResponse[] {
 }
 
 export default {
-  async fetch(request: Request): Promise<Response> {
+  async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
 
     if (request.method === 'OPTIONS') {
@@ -57,6 +63,16 @@ export default {
       const payload = (await request.json()) as ProspectRequest;
       const leads = computeLeads(payload);
       return jsonResponse({ leads });
+    }
+
+    if (request.method === 'GET') {
+      const assetResponse = await env.ASSETS.fetch(request);
+      if (assetResponse.status !== 404) {
+        return assetResponse;
+      }
+
+      const indexUrl = new URL('/index.html', request.url);
+      return env.ASSETS.fetch(new Request(indexUrl, request));
     }
 
     return jsonResponse({ error: 'Not found' }, { status: 404 });
