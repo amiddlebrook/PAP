@@ -1,0 +1,72 @@
+{
+  "type": "FeatureCollection",
+  "name": "PAP illustrative observations — synthetic inputs, not field measurements",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -116.42,
+          40.13
+        ]
+      },
+      "properties": {
+        "id": "EX-001",
+        "name": "Illustrative Nevada 01",
+        "deposit_proximity": 0.86,
+        "fault_density": 0.91,
+        "lithology_match": 0.72,
+        "geochem_score": 0.85,
+        "ferric_index": 0.63,
+        "clay_index": 0.44,
+        "aloh_index": 0.32,
+        "slope_score": 0.58
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -111.1,
+          32.72
+        ]
+      },
+      "properties": {
+        "id": "EX-002",
+        "name": "Illustrative Arizona 02",
+        "deposit_proximity": 0.68,
+        "fault_density": 0.73,
+        "lithology_match": 0.92,
+        "geochem_score": 0.7,
+        "ferric_index": 0.88,
+        "clay_index": 0.9,
+        "aloh_index": 0.72,
+        "slope_score": 0.38
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -108.72,
+          38.45
+        ]
+      },
+      "properties": {
+        "id": "EX-003",
+        "name": "Illustrative Colorado 03",
+        "deposit_proximity": 0.69,
+        "fault_density": 0.54,
+        "lithology_match": 0.86,
+        "geochem_score": 0.76,
+        "ferric_index": 0.57,
+        "clay_index": 0.51,
+        "aloh_index": 0.64,
+        "slope_score": 0.73
+      }
+    }
+  ]
+}

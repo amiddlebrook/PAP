@@ -1,108 +1,131 @@
-# Prospecting Analytics Platform (PAP)
+# PAP — Prospecting Analytics Platform
 
-## Product Overview
-The Prospecting Analytics Platform (PAP) is a Cloudflare-native web application for analyzing global geological, geochemical, and remote-sensing datasets to identify precious-metal prospecting opportunities. It provides an interactive heatmap experience where users can tune weights, apply filters, and extract high-value targets.
+**Cloudflare-native, zero-mandatory-cost mineral exploration workbench.** An interactive geospatial app that ranks user-supplied, normalized geological observations with a fully explainable weighted model.
 
-Core capabilities include the ability to select any geographic region, load multiple geological and remote-sensing layers, adjust weights to generate live Prospect Score heatmaps, select areas using drawing tools, export leads, and save or share sessions through unique URLs. The system emphasizes low operating cost and high performance by leveraging Cloudflare Pages and Workers, R2 for storage, and PMTiles/COGs for map layers.
+> **Data integrity first:** PAP launches with a **synthetic 12-point demonstration dataset**, clearly labeled in the interface. These positions and measurements are invented for UI and model testing, **not real assays, mineral deposits, validated anomalies, mineral-resource estimates, investment advice or property recommendations**. To perform actual analyses, import your own verified GeoJSON observations.
 
-## User Personas
-- **Independent Prospectors**: seek easy presets, rapid insights, and quick exports (GPX, KML, GeoJSON).
-- **Exploration Startups**: need ranked leads, structured data, and team collaboration features.
-- **Data Researchers**: require raw values, transparency, and complete control for their own modeling.
+## What works
 
-## Core Features (MVP)
-### Global Map Interface
-- Built with MapLibre GL for rendering.
-- Smooth pan and zoom with multiple basemaps.
+- **MapLibre map** with OpenFreeMap basemap (no API key), clickable locations, map navigation and target focus.
+- **Gold / Copper / Lithium model presets** plus eight adjustable 0–5 factor weights.
+- **Live, explainable prospect scores**, ranked targets, search and minimum-score filtering.
+- **GeoJSON import:** validates every Point, coordinate and normalized measurement.
+- **CSV and GeoJSON export** of the visible ranked shortlist, including score and original factors.
+- **Local workspace settings** (project name, weights and preset) via browser storage; data imports remain in memory.
+- **Share model link** containing weights and score threshold (not imported data).
+- **Mobile-responsive exploration UI** and accessibility labels.
+- **Cloudflare Worker** with `/api/health` and `/api/schema`; static SPA delivered by Workers Static Assets.
+- **GitHub Actions** typechecking, lint, build, Wrangler packaging check on PRs, and deploy on push to `main`.
 
-### Layer Browser
-- Toggle geology polygons, faults, known deposits, geochemical grids, satellite indices, and DEM derivatives.
+## Run locally
 
-### Prospect Score Engine
-Uses a weighted sum model:
+Requirements: Node.js 22+ and npm.
 
+```bash
+npm ci
+npm run dev
 ```
-score = Σ(weight_i × normalized_feature_i)
+
+Open the Vite local address (normally http://localhost:5173). For a production-like Cloudflare local preview:
+
+```bash
+npm run build
+npx wrangler@4 dev
 ```
 
-Supported features include deposit proximity, fault density, lithology match, geochemical anomaly values, ferric iron index, clay index, Al-OH alteration index, and slope/exposure scores.
+For local builds without Cloudflare credentials, the Vite development server and static preview work without any cloud setup.
 
-### Selection Tools
-- Lasso, rectangle, and point selection.
-- Statistical summaries and export of selections.
+## Deploy free to Cloudflare from GitHub
 
-### Leads Generator
-- Extracts top-scoring tiles, clusters them, and generates lead zones with metadata.
+This project uses **one Worker** with static assets, **no D1, R2, KV, durable objects, paid databases, paid mapping subscriptions or external AI APIs**.
 
-### Save & Share
-- Stores data in Durable Objects and shares via encoded URLs.
+1. Create a free Cloudflare account and enable your free `workers.dev` subdomain.
+2. Go to **GitHub → PAP → Settings → Secrets and variables → Actions** and create repository secrets:
+   - `CLOUDFLARE_API_TOKEN` — Cloudflare API token scoped to *Edit Cloudflare Workers* for your account.
+   - `CLOUDFLARE_ACCOUNT_ID` — the Cloudflare account ID (not the zone ID).
+3. Merge the restoration pull request to `main`. The workflow builds, checks, and runs `wrangler deploy` automatically. Subsequent pushes to `main` redeploy.
+4. Open the assigned workers.dev URL shown in deployment output. Verify `/api/health` returns `{"status":"ok", ...}`.
 
-## Advanced Features (Post-MVP)
-Future enhancements include ML-assisted alteration mapping, satellite time-series analysis, offline PMTiles packs, user-uploaded assay data, and AI-guided prospecting queries.
+No credit card or paid Cloudflare plan is required for the app design; actual availability is still subject to Cloudflare's free-tier limits and to the availability of the free public OpenFreeMap tiles. Worker requests use the Workers Free request allocation, while static asset requests are free. GitHub Actions usage is subject to GitHub's plan and repository allowances.
 
-## Technical Architecture
-- **Frontend**: React, MapLibre, deck.gl, Zustand, TanStack Query.
-- **Backend**: Cloudflare Workers and Durable Objects.
-- **Storage**: Cloudflare R2 for PMTiles/COGs and D1 (SQLite).
+**Important:** GitHub Actions deployment requires those two secrets. The CI job runs without them, but the deployment job intentionally fails with instructions until both are configured. No secret or account identifier belongs in tracked files.
 
-### R2 Storage Structure
-- `geo/geology.pmtiles`
-- `geo/faults.pmtiles`
-- `geo/deposits.pmtiles`
-- `geo/indices/*.tif`
-- `geo/dem/*.tif`
+## Input data: normalized GeoJSON
 
-### D1 Database Tables
-- `projects(id, owner, name, state_json, created_at)`
-- `leads(id, project_id, geom, score, factors_json)`
-- `sources(id, type, url, version, metadata_json)`
+Import a **GeoJSON FeatureCollection** of **1–500 Point features**, at most **1 MB**. Each feature must have all eight numeric properties between **0 and 1**:
 
-## Scoring Engine Details
-Each tile or hex cell stores normalized features:
-`deposit_proximity`, `fault_density`, `lithology_match`, `geochem_score`, `ferric_index`, `clay_index`, `aloh_index`, and `slope_score`.
+| Property | Interpretation |
+| --- | --- |
+| `deposit_proximity` | Normalized proximity to known occurrences |
+| `fault_density` | Normalized mapped structures/fault density |
+| `lithology_match` | Target lithology similarity |
+| `geochem_score` | Normalized geochemical anomaly |
+| `ferric_index` | Ferric iron response |
+| `clay_index` | Clay alteration response |
+| `aloh_index` | Al-OH alteration response |
+| `slope_score` | Slope/exposure favorability |
 
-Normalization strategies:
-- Min-max scaling per region.
-- Z-score normalization for geochemical data.
-- Capped values for distance-based metrics.
+Example (all values invented):
 
-## Preset Models
-- **Gold (Orogenic)**: high structure density, medium-high ferric iron, lithology match for greenstones, Au/As/Sb anomalies.
-- **Copper (Porphyry)**: high ferric and clay indices, intrusive lithology, faults within 5 km.
-- **Lithium (Pegmatite)**: fractionated granites, radiometric potassium proxies, low vegetation index, moderate slopes.
+```json
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [-116.42, 40.13] },
+      "properties": {
+        "id": "SAMPLE-1",
+        "name": "Illustrative location",
+        "deposit_proximity": 0.86,
+        "fault_density": 0.91,
+        "lithology_match": 0.72,
+        "geochem_score": 0.85,
+        "ferric_index": 0.63,
+        "clay_index": 0.44,
+        "aloh_index": 0.32,
+        "slope_score": 0.58
+      }
+    }
+  ]
+}
+```
 
-## User Stories
-- **US-001**: Generate Heatmap.
-- **US-002**: Select Area.
-- **US-003**: Generate Leads.
-- **US-004**: Save & Share Projects.
-- **US-005**: Export Data.
+The file `examples/illustrative-observations.geojson` is an import-ready example. The API endpoint `GET /api/schema` enumerates required field IDs. Feature properties can also be supplied under `properties.features`.
 
-## UI Specification
-- Left panel for layer management.
-- Right panel for weight sliders.
-- Top-left controls for Save/Share.
-- Top-right presets menu.
-- Bottom heatmap legend.
+### Scoring formula
 
-### Leads Panel
-Displays lead name, score, centroid, bounding box, sorting options, and zoom-to buttons.
+For enabled factors (`weight > 0`):
 
-## Performance Requirements
-- Heatmap updates in under 500 ms.
-- Tile load times under 200 ms.
-- Worker compute time under 50 ms.
-- Storage cost under $5 per month.
-- Worker cost under $7 per month under medium usage.
+```text
+score = 100 × sum(weight_i × normalized_feature_i) / sum(weight_i)
+```
 
-## Security Requirements
-- Optional Cloudflare Access OAuth.
-- Enforced HTTPS.
-- Signed tile URLs.
-- No user file uploads in the MVP.
+If all weights are zero, all scores are zero. Results range 0–100. This is a **relative suitability index computed from inputs**, not a probability of mineralization, deposit size, yield or exploration success. Values are never inferred for missing measurements; incomplete imports are rejected.
 
-## Future Roadmap
-- **Q2**: ML classifiers and custom formulas.
-- **Q3**: Offline mode, AI agent, and team workspaces.
-- **Q4**: Automated PDF reports, drillhole ingestion, and predictive modeling.
+## Data handling and sharing
 
+All GeoJSON parsing, scoring and export occur in the browser. Imported datasets are **not uploaded** to the Worker and disappear on refresh; save an exported GeoJSON before navigating away. Project name and model settings persist only in this browser via Zustand/localStorage. Share URLs contain model weights and the score threshold but never imported data; recipients must independently load the same observations.
+
+## Repo structure
+
+```text
+src/App.tsx                   responsive analysis workbench
+src/engine.ts                validated input, score engine, export formatters
+src/components/ProspectMap.tsx  MapLibre overlay + target interactions
+src/styles.css               responsive design system
+worker/src/index.ts          lightweight JSON health/schema API
+wrangler.toml                single Worker + static assets
+.github/workflows/deploy.yml CI and CD
+examples/                    synthetic sample imports
+```
+
+**Scope and next data integration:** This version is an operational *import-and-analyze* workbench. It does not claim to supply a global live geology/assay database, satellite raster analytics, mineral titles/land access validation, or remote project synchronization. Real geological data pipelines should be sourced, licensed, normalized, and tested before adding them, not replaced by generated values.
+
+## Free infrastructure
+
+- Hosting and API: [Cloudflare Workers Static Assets](https://developers.cloudflare.com/workers/static-assets/)
+- CI/CD: [GitHub Actions](https://github.com/features/actions)
+- Basemap: [OpenFreeMap](https://openfreemap.org/) using OpenStreetMap/open mapping contributors
+- Rendering: [MapLibre GL JS](https://maplibre.org/)
+- No mandatory account sign-in; no paid service dependencies.
