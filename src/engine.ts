@@ -111,6 +111,11 @@ export function csvFor(items: RankedObservation[]): string {
   const rows = items.map((item) => [
     item.id, item.name, item.coordinates[0], item.coordinates[1], item.score,
     ...factors.map((key) => item.features[key])
-  ].map((x) => '"' + String(x).replace(/"/g, '""') + '"').join(','));
+  ].map((x) => {
+    const safe = typeof x === 'string' && /^[=+@\-\t\r]/.test(x)
+      ? String.fromCharCode(39) + x
+      : String(x);
+    return '"' + safe.replace(/"/g, '""') + '"';
+  }).join(','));
   return [columns.join(','), ...rows].join('\n');
 }
