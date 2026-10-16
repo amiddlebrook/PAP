@@ -1,80 +1,43 @@
-type ProspectRequest = {
-  weights: Record<string, number>;
-  layers: string[];
-};
+type Env = { ASSETS: { fetch: (request: Request) => Promise<Response> } };
 
-type LeadResponse = {
-  id: string;
-  name: string;
-  score: number;
-  centroid: [number, number];
-  areaSqKm: number;
-  dominantFactors: string[];
-};
+const factorIds = [
+  'deposit_proximity', 'fault_density', 'lithology_match', 'geochem_score',
+  'ferric_index', 'clay_index', 'aloh_index', 'slope_score'
+];
 
-type Env = {
-  ASSETS: {
-    fetch: (request: Request) => Promise<Response>;
-  };
-};
-
-function jsonResponse<T>(payload: T, init?: ResponseInit) {
-  return new Response(JSON.stringify(payload), {
-    headers: { 'content-type': 'application/json' },
-    ...init
+function json(data: unknown, status = 200): Response {
+  return new Response(JSON.stringify(data), {
+    status, headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'no-store',
+      'X-Content-Type-Options': 'nosniff'
+    }
   });
-}
-
-function computeLeads(request: ProspectRequest): LeadResponse[] {
-  const totalWeight = Object.values(request.weights).reduce((acc, value) => acc + value, 0);
-  const baseScore = totalWeight === 0 ? 0 : 1000 / totalWeight;
-
-  return request.layers.slice(0, 5).map((layer, index) => ({
-    id: `lead-${index + 1}`,
-    name: `Prospect ${layer.toUpperCase()}-${index + 1}`,
-    score: Math.round((baseScore + index * 42) * 10) / 10,
-    centroid: [133.8 + index * 0.5, -25.27 + index * 0.3],
-    areaSqKm: 5 + index * 1.2,
-    dominantFactors: Object.keys(request.weights)
-      .sort((a, b) => request.weights[b] - request.weights[a])
-      .slice(0, 3)
-  }));
 }
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
 
-    if (request.method === 'OPTIONS') {
-      return new Response(null, {
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
-          'Access-Control-Allow-Headers': '*'
-        }
-      });
-    }
-
-    if (url.pathname === '/api/health') {
-      return jsonResponse({ status: 'ok', timestamp: Date.now() }, { status: 200 });
-    }
-
-    if (url.pathname === '/api/leads' && request.method === 'POST') {
-      const payload = (await request.json()) as ProspectRequest;
-      const leads = computeLeads(payload);
-      return jsonResponse({ leads });
-    }
-
-    if (request.method === 'GET') {
-      const assetResponse = await env.ASSETS.fetch(request);
-      if (assetResponse.status !== 404) {
-        return assetResponse;
+    if (url.pathname.startsWith('/api/')) {
+      if (request.method !== 'GET' && request.method !== 'HEAD') {
+        return json({ error: 'Method not allowed' }, 405);
       }
-
-      const indexUrl = new URL('/index.html', request.url);
-      return env.ASSETS.fetch(new Request(indexUrl, request));
+      if (url.pathname === '/api/health') {
+        return json({ status: 'ok', product: 'PAP', storage: 'client-side', paidServicesRequired: false });
+      }
+      if (url.pathname === '/api/schema') {
+        return json({
+          type: 'FeatureCollection',
+          geometry: 'Point',
+          normalizedFeatureProperties: factorIds,
+          range: [0, 1],
+          maxFeatures: 500,
+          note: 'Geological measurements must be provided by the user; no discovery probability is inferred.'
+        });
+      }
+      return json({ error: 'Unknown API endpoint' }, 404);
     }
-
-    return jsonResponse({ error: 'Not found' }, { status: 404 });
+    return env.ASSETS.fetch(request);
   }
 };
