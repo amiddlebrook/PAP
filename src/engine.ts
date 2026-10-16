@@ -88,7 +88,7 @@ export function parseGeoJSON(input: unknown): Observation[] {
     return {
       id: String(props.id ?? feature.id ?? 'import-' + (index + 1)),
       name: String(props.name ?? 'Imported site ' + (index + 1)).slice(0, 90),
-      coordinates: [longitude, latitude],
+      coordinates: [longitude, latitude] as [number, number],
       features: measurements,
       source: 'import'
     };
