@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { presetCatalog, type PresetId } from '../types/presets';
-import { defaultWeights, type WeightKey } from '../types/weights';
+import type { WeightKey } from '../types/weights';
 
 type ProjectState = {
   projectName: string;
@@ -16,7 +16,7 @@ export const useProjectStore = create<ProjectState>()(
   persist(
     (set) => ({
       projectName: 'New exploration workspace',
-      weights: { ...defaultWeights },
+      weights: { ...presetCatalog[0].weights },
       activePreset: 'gold_orogenic',
       setProjectName: (name) => set({ projectName: name }),
       updateWeight: (key, value) => set((state) => ({
