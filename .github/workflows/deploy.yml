@@ -68,3 +68,25 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy
+
+      - name: Verify production homepage and API
+        shell: bash
+        env:
+          PAP_URL: https://pap.averymiddlebrook2014.workers.dev
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 12); do
+            if curl --fail --silent --show-error --connect-timeout 8 --max-time 15 "$PAP_URL/api/health" > /tmp/pap-health.json \
+              && jq -e '.status == "ok" and .product == "PAP"' /tmp/pap-health.json > /dev/null; then
+              break
+            fi
+            if [ "$attempt" -eq 12 ]; then
+              echo "::error::Production health endpoint failed"
+              exit 1
+            fi
+            sleep 5
+          done
+          curl --fail --silent --show-error --max-time 15 "$PAP_URL/api/schema" \
+            | jq -e '.type == "FeatureCollection" and (.normalizedFeatureProperties | length == 8)' > /dev/null
+          curl --fail --silent --show-error --max-time 15 "$PAP_URL/" | grep -F '<div id="root"></div>'
+          echo "PAP live homepage, health endpoint and schema endpoint verified"
